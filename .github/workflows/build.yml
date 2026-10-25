@@ -11,44 +11,40 @@ jobs:
     runs-on: windows-2022
 
     steps:
-      - name: Descargar repositorio do plugin
-        uses: actions/checkout@v4
-        with:
-          path: plugin
-
-      - name: Descargar cabeceiras e CMake de OBS Studio
+      - name: Descargar código base de OBS Studio (Versión 32.2.2)
         uses: actions/checkout@v4
         with:
           repository: obsproject/obs-studio
-          ref: '30.2.3'
-          path: obs-studio
-          sparse-checkout: |
-            libobs
-            cmake
+          ref: 32.2.2
+          submodules: recursive
 
-      - name: Activar compilador MSVC (C++)
-        uses: ilammy/msvc-dev-cmd@v1
+      - name: Descargar código do teu plugin (Replay Source)
+        uses: actions/checkout@v4
         with:
-          arch: x64
+          path: plugins/replay-source
 
-      - name: Configurar Proxecto con CMake
+      - name: Inxectar o plugin no proxecto de OBS
         shell: pwsh
         run: |
-          cmake -B build -S plugin `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE/obs-studio" `
-            -DCMAKE_MODULE_PATH="$env:GITHUB_WORKSPACE/obs-studio/cmake/Modules" `
-            -Dlibobs_INCLUDE_DIR="$env:GITHUB_WORKSPACE/obs-studio/libobs"
+          Add-Content -Path "plugins/CMakeLists.txt" -Value "`nadd_subdirectory(replay-source)"
 
-      - name: Compilar Plugin
+      - name: Configurar CMake (OBS descargará os requisitos de Windows)
         shell: pwsh
         run: |
-          cmake --build build --config Release
+          cmake -B build -S . `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DENABLE_UI=OFF `
+            -DBUILD_BROWSER=OFF `
+            -DENABLE_SCRIPTING=OFF `
+            -DENABLE_WEBSOCKET=OFF
 
-      - name: Subir artefacto compilado (.dll)
+      - name: Compilar unicamente a DLL de Replay Source
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target replay-source
+
+      - name: Subir artefacto final (.dll)
         uses: actions/upload-artifact@v4
         with:
           name: replay-source-windows-x64
-          path: |
-            build/replay-source.dll
-            build/Release/replay-source.dll
+          path: build/plugins/replay-source/**/replay-source.dll
