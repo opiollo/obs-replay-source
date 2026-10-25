@@ -6,14 +6,6 @@ on:
     branches: [ master, main ]
 
 jobs:
-  build-windows:name: Compilar Replay Source Windows
-
-on:
-  workflow_dispatch:
-  push:
-    branches: [ master, main ]
-
-jobs:
   build-windows:
     name: Windows x64
     runs-on: windows-2022
@@ -41,44 +33,6 @@ jobs:
           cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE/obs-dev"
-
-      - name: Compilar Plugin
-        shell: pwsh
-        run: |
-          cmake --build build --config Release
-
-      - name: Subir artefacto compilado (.dll)
-        uses: actions/upload-artifact@v4
-        with:
-          name: replay-source-windows-x64
-          path: |
-            build/replay-source.dll
-            build/Release/replay-source.dll
-    name: Windows x64
-    runs-on: windows-2022
-
-    steps:
-      - name: Descargar repositorio do plugin
-        uses: actions/checkout@v4
-
-      - name: Activar compilador MSVC (C++)
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Descargar precompilado de OBS Studio
-        shell: pwsh
-        run: |
-          $obsUrl = "https://github.com/obsproject/obs-studio/releases/download/30.2.3/OBS-Studio-30.2.3-Windows.zip"
-          Invoke-WebRequest -Uri $obsUrl -OutFile "obs-studio.zip"
-          Expand-Archive -Path "obs-studio.zip" -DestinationPath "$env:GITHUB_WORKSPACE/obs-studio"
-
-      - name: Configurar Proxecto con CMake
-        shell: pwsh
-        run: |
-          cmake -B build -S . `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE/obs-studio"
 
       - name: Compilar Plugin
         shell: pwsh
