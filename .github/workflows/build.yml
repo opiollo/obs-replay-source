@@ -19,21 +19,16 @@ jobs:
         with:
           arch: x64
 
-      - name: Descargar dependencias e SDK de libobs
-        shell: pwsh
-        run: |
-          # Descarga o arquivo oficial completo con cabeceiras e CMake de OBS Studio
-          gh release download 30.2.3 --repo obsproject/obs-studio --pattern "OBS-Studio-30.2.3-Full-x64.zip" --output obs-full.zip
-          Expand-Archive -Path "obs-full.zip" -DestinationPath "$env:GITHUB_WORKSPACE/obs-studio"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Instalar SDK oficial de OBS Studio
+        uses: obsproject/setup-obs-studio@v1
+        with:
+          version: '30.2.3'
 
       - name: Configurar Proxecto con CMake
         shell: pwsh
         run: |
           cmake -B build -S . `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE/obs-studio"
+            -DCMAKE_BUILD_TYPE=Release
 
       - name: Compilar Plugin
         shell: pwsh
