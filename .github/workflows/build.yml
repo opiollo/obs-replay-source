@@ -13,22 +13,32 @@ jobs:
     steps:
       - name: Descargar repositorio do plugin
         uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - name: Descargar cabeceiras e CMake de OBS Studio
+        uses: actions/checkout@v4
+        with:
+          repository: obsproject/obs-studio
+          ref: '30.2.3'
+          path: obs-studio
+          sparse-checkout: |
+            libobs
+            cmake
 
       - name: Activar compilador MSVC (C++)
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
 
-      - name: Instalar SDK oficial de OBS Studio
-        uses: obsproject/setup-obs-studio@v1
-        with:
-          version: '30.2.3'
-
       - name: Configurar Proxecto con CMake
         shell: pwsh
         run: |
-          cmake -B build -S . `
-            -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -S plugin `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE/obs-studio" `
+            -DCMAKE_MODULE_PATH="$env:GITHUB_WORKSPACE/obs-studio/cmake/Modules" `
+            -Dlibobs_INCLUDE_DIR="$env:GITHUB_WORKSPACE/obs-studio/libobs"
 
       - name: Compilar Plugin
         shell: pwsh
