@@ -19,20 +19,16 @@ jobs:
         with:
           arch: x64
 
-      - name: Descargar SDK e ficheiros de desenvolvemento de OBS
-        shell: pwsh
-        run: |
-          # Descarga o arquivo precompilado con cabeceiras e librarías de desenvolvemento de OBS Studio
-          $devUrl = "https://github.com/obsproject/obs-studio/releases/download/30.2.3/obs-studio-30.2.3-Windows-dev.zip"
-          Invoke-WebRequest -Uri $devUrl -OutFile "obs-dev.zip"
-          Expand-Archive -Path "obs-dev.zip" -DestinationPath "$env:GITHUB_WORKSPACE/obs-dev"
+      - name: Instalar SDK de libobs
+        uses: wimpysworld/setup-libobs@v1
+        with:
+          version: '30.2.2'
 
       - name: Configurar Proxecto con CMake
         shell: pwsh
         run: |
           cmake -B build -S . `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE/obs-dev"
+            -DCMAKE_BUILD_TYPE=Release
 
       - name: Compilar Plugin
         shell: pwsh
