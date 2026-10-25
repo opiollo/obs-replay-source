@@ -23,12 +23,12 @@ jobs:
         with:
           path: plugins/replay-source
 
-      - name: Inxectar o plugin no proxecto de OBS
+      - name: Inxectar o plugin e silenciar avisos obsoletos
         shell: pwsh
         run: |
-          Add-Content -Path "plugins/CMakeLists.txt" -Value "`nadd_subdirectory(replay-source)"
+          Add-Content -Path "plugins/CMakeLists.txt" -Value "`nadd_compile_options(/wd4996)`nadd_subdirectory(replay-source)"
 
-      - name: Configurar CMake (OBS descargará os requisitos de Windows)
+      - name: Configurar CMake
         shell: pwsh
         run: |
           cmake -B build -S . `
@@ -36,7 +36,8 @@ jobs:
             -DENABLE_UI=OFF `
             -DBUILD_BROWSER=OFF `
             -DENABLE_SCRIPTING=OFF `
-            -DENABLE_WEBSOCKET=OFF
+            -DENABLE_WEBSOCKET=OFF `
+            -DENABLE_WARNINGS_AS_ERRORS=OFF
 
       - name: Compilar unicamente a DLL de Replay Source
         shell: pwsh
