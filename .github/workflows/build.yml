@@ -1,14 +1,15 @@
 name: build obs plugin
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ master ]
+    branches: [ master, main ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, main ]
 
 env:
   PLUGIN_NAME: replay-source
-  OBS_VERSION: 29.1.0
+  OBS_VERSION: 32.0.0
 
 jobs:
   macos:
