@@ -21,7 +21,7 @@ static void replay_filter_update(void *data, obs_data_t *settings)
 		pthread_mutex_unlock(&filter->mutex);
 	}
 	filter->duration = new_duration;
-	filter->internal_frames = obs_data_get_bool(settings, SETTING_INTERNAL_FRAMES);
+	filter->internal_frames = false;
 	const double db = obs_data_get_double(settings, SETTING_AUDIO_THRESHOLD);
 	filter->threshold = db_to_mul((float)db);
 }
