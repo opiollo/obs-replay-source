@@ -28,7 +28,7 @@ jobs:
         run: |
           Add-Content -Path "plugins/CMakeLists.txt" -Value "`nadd_compile_options(/wd4996)`nadd_subdirectory(replay-source)"
 
-      - name: Configurar CMake
+      - name: Configurar Proxecto con CMake
         shell: pwsh
         run: |
           cmake -B build -S . `
@@ -37,7 +37,8 @@ jobs:
             -DBUILD_BROWSER=OFF `
             -DENABLE_SCRIPTING=OFF `
             -DENABLE_WEBSOCKET=OFF `
-            -DENABLE_WARNINGS_AS_ERRORS=OFF
+            -DENABLE_WARNINGS_AS_ERRORS=OFF `
+            -D-OBS_VERSION_OVERRIDE="33.0.0"
 
       - name: Compilar unicamente a DLL de Replay Source
         shell: pwsh
