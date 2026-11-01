@@ -14,28 +14,26 @@ static const char *replay_filter_get_name(void *unused)
 	return obs_module_text("ReplayFilter");
 }
 
-static inline void copy_frame_data_line(struct obs_source_frame *dst, const struct video_data *src, uint32_t plane, uint32_t y)
+static inline void copy_frame_data_line(struct obs_source_frame *dst, const struct video_data *src, uint32_t plane,
+					uint32_t y)
 {
 	const uint32_t pos_src = y * src->linesize[plane];
 	const uint32_t pos_dst = y * dst->linesize[plane];
-	const uint32_t bytes = dst->linesize[plane] < src->linesize[plane] ? dst->linesize[plane] : src->linesize[plane];
-
+	const uint32_t bytes = dst->linesize[plane] < src->linesize[plane] ? dst->linesize[plane]
+									   : src->linesize[plane];
 	memcpy(dst->data[plane] + pos_dst, src->data[plane] + pos_src, bytes);
 }
 
 void replay_filter_raw_video(void *data, struct video_data *frame)
 {
 	struct replay_filter *filter = data;
-
 	if (!frame || !frame->data[0])
 		return;
-
 	struct obs_source_frame *output;
-
-	struct obs_source_frame *new_frame = obs_source_frame_create(VIDEO_FORMAT_BGRA, filter->known_width, filter->known_height);
+	struct obs_source_frame *new_frame =
+		obs_source_frame_create(VIDEO_FORMAT_BGRA, filter->known_width, filter->known_height);
 	new_frame->refs = 1;
 	new_frame->timestamp = frame->timestamp;
-
 	if (new_frame->linesize[0] != frame->linesize[0])
 		for (uint32_t y = 0; y < filter->known_height; y++)
 			copy_frame_data_line(new_frame, frame, 0, y);
@@ -43,16 +41,11 @@ void replay_filter_raw_video(void *data, struct video_data *frame)
 		memcpy(new_frame->data[0], frame->data[0], new_frame->linesize[0] * filter->known_height);
 
 	pthread_mutex_lock(&filter->mutex);
-
 	circlebuf_push_back(&filter->video_frames, &new_frame, sizeof(struct obs_source_frame *));
-
 	circlebuf_peek_front(&filter->video_frames, &output, sizeof(struct obs_source_frame *));
-
 	uint64_t cur_duration = frame->timestamp - output->timestamp;
 	while (cur_duration > 0 && cur_duration > filter->duration) {
-
 		circlebuf_pop_front(&filter->video_frames, NULL, sizeof(struct obs_source_frame *));
-
 		if (os_atomic_dec_long(&output->refs) <= 0) {
 			obs_source_frame_destroy(output);
 			output = NULL;
@@ -80,6 +73,13 @@ void replay_filter_offscreen_render(void *data, uint32_t cx, uint32_t cy)
 
 	const uint32_t width = obs_source_get_base_width(target);
 	const uint32_t height = obs_source_get_base_height(target);
+	if (!width || !height) {
+		return;
+	}
+
+	if (!filter->texrender) {
+		filter->texrender = gs_texrender_create(TEXFORMAT, GS_ZS_NONE);
+	}
 
 	gs_texrender_reset(filter->texrender);
 
@@ -99,8 +99,9 @@ void replay_filter_offscreen_render(void *data, uint32_t cx, uint32_t cy)
 		gs_texrender_end(filter->texrender);
 
 		if (filter->known_width != width || filter->known_height != height) {
-
-			gs_stagesurface_destroy(filter->stagesurface);
+			if (filter->stagesurface) {
+				gs_stagesurface_destroy(filter->stagesurface);
+			}
 			filter->stagesurface = gs_stagesurface_create(width, height, TEXFORMAT);
 
 			struct video_output_info vi = {0};
@@ -148,23 +149,16 @@ void replay_filter_offscreen_render(void *data, uint32_t cx, uint32_t cy)
 static void replay_filter_update(void *data, obs_data_t *settings)
 {
 	struct replay_filter *filter = data;
-
 	obs_remove_main_render_callback(replay_filter_offscreen_render, filter);
-
 	uint64_t new_duration = (uint64_t)obs_data_get_int(settings, SETTING_DURATION) * MSEC_TO_NSEC;
-
 	if (new_duration < filter->duration) {
 		pthread_mutex_lock(&filter->mutex);
 		free_video_data(filter);
 		pthread_mutex_unlock(&filter->mutex);
 	}
-
 	filter->duration = new_duration;
-
 	obs_add_main_render_callback(replay_filter_offscreen_render, filter);
-
 	replay_filter_check(filter);
-
 	obs_source_t *s = obs_get_source_by_name(obs_source_get_name(filter->src));
 	if (s) {
 		if (obs_data_get_bool(settings, SETTING_SOUND_TRIGGER) && !filter->trigger_threshold) {
@@ -182,14 +176,14 @@ static void *replay_filter_create(obs_data_t *settings, obs_source_t *source)
 	struct replay_filter *context = bzalloc(sizeof(struct replay_filter));
 	context->src = source;
 	pthread_mutex_init(&context->mutex, NULL);
-
+	obs_enter_graphics();
 	context->texrender = gs_texrender_create(TEXFORMAT, GS_ZS_NONE);
+	obs_leave_graphics();
 	context->video_data = NULL;
 	obs_get_video_info(&context->ovi);
 	context->last_check = obs_get_video_frame_time();
 
 	replay_filter_update(context, settings);
-
 	return context;
 }
 
@@ -198,13 +192,25 @@ static void replay_filter_destroy(void *data)
 	struct replay_filter *filter = data;
 
 	obs_remove_main_render_callback(replay_filter_offscreen_render, filter);
+
 	pthread_mutex_lock(&filter->mutex);
 	video_output_close(filter->video_output);
 	filter->video_output = NULL;
 
-	gs_stagesurface_unmap(filter->stagesurface);
-	gs_stagesurface_destroy(filter->stagesurface);
-	gs_texrender_destroy(filter->texrender);
+	obs_enter_graphics();
+	if (filter->stagesurface) {
+		if (filter->video_data) {
+			gs_stagesurface_unmap(filter->stagesurface);
+			filter->video_data = NULL;
+		}
+		gs_stagesurface_destroy(filter->stagesurface);
+		filter->stagesurface = NULL;
+	}
+	if (filter->texrender) {
+		gs_texrender_destroy(filter->texrender);
+		filter->texrender = NULL;
+	}
+	obs_leave_graphics();
 
 	free_video_data(filter);
 	free_audio_data(filter);
@@ -212,19 +218,17 @@ static void replay_filter_destroy(void *data)
 	circlebuf_free(&filter->video_frames);
 	circlebuf_free(&filter->audio_frames);
 	pthread_mutex_destroy(&filter->mutex);
+
 	bfree(data);
 }
 
 static obs_properties_t *replay_filter_properties(void *unused)
 {
 	UNUSED_PARAMETER(unused);
-
 	obs_properties_t *props = obs_properties_create();
-
-	obs_property_t *prop = obs_properties_add_int(props, SETTING_DURATION, obs_module_text("Duration"), SETTING_DURATION_MIN,
-						      SETTING_DURATION_MAX, 1000);
+	obs_property_t *prop = obs_properties_add_int(props, SETTING_DURATION, obs_module_text("Duration"),
+						      SETTING_DURATION_MIN, SETTING_DURATION_MAX, 1000);
 	obs_property_int_set_suffix(prop, "ms");
-
 	return props;
 }
 
@@ -232,7 +236,6 @@ static void replay_filter_remove(void *data, obs_source_t *parent)
 {
 	UNUSED_PARAMETER(parent);
 	struct replay_filter *filter = data;
-
 	obs_remove_main_render_callback(replay_filter_offscreen_render, filter);
 	pthread_mutex_lock(&filter->mutex);
 	free_video_data(filter);
