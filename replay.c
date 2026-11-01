@@ -152,3 +152,7 @@ void replay_filter_check(void *data)
 		obs_source_filter_remove(obs_filter_get_parent(filter->src), filter->src);
 	}
 }
+void replay_trigger_threshold(void *data)
+{
+	UNUSED_PARAMETER(data);
+}
