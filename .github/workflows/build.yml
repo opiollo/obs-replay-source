@@ -1,4 +1,4 @@
-name: Compilar Replay Source Windows
+name: Compilar Replay Source Windows Completo
 
 on:
   workflow_dispatch:
@@ -11,11 +11,11 @@ jobs:
     runs-on: windows-2022
 
     steps:
-      - name: Descargar código base de OBS Studio (Versión 32.2.2)
+      - name: Descargar código base de OBS Studio (OBS 33)
         uses: actions/checkout@v4
         with:
           repository: obsproject/obs-studio
-          ref: 32.2.2
+          ref: master
           submodules: recursive
 
       - name: Descargar código do teu plugin (Replay Source)
@@ -44,8 +44,21 @@ jobs:
         run: |
           cmake --build build --config Release --target replay-source
 
-      - name: Subir artefacto final (.dll)
+      - name: Empaquetar o plugin completo
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "package/obs-plugins/64bit"
+          New-Item -ItemType Directory -Force -Path "package/data/obs-plugins/replay-source"
+          
+          $dllFile = Get-ChildItem -Path build/plugins/replay-source -Filter replay-source.dll -Recurse
+          Copy-Item -Path $dllFile.FullName -Destination "package/obs-plugins/64bit/"
+          
+          if (Test-Path "plugins/replay-source/data") {
+              Copy-Item -Path "plugins/replay-source/data\*" -Destination "package/data/obs-plugins/replay-source\" -Recurse
+          }
+
+      - name: Subir artefacto final (Paquete completo)
         uses: actions/upload-artifact@v4
         with:
-          name: replay-source-windows-x64
-          path: build/plugins/replay-source/**/replay-source.dll
+          name: replay-source-windows-paquete-completo
+          path: package/
