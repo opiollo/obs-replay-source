@@ -28,9 +28,14 @@ jobs:
         run: |
           Add-Content -Path "plugins/CMakeLists.txt" -Value "`nadd_compile_options(/wd4996)`nadd_subdirectory(replay-source)"
 
-      - name: Configurar Proxecto con CMake
+      - name: Configurar CMake e Forzar Versión
         shell: pwsh
         run: |
+          # Crear unha etiqueta falsa de Git para que o script de OBS non dea erro de formato
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git tag 33.0.0
+          
           cmake -B build -S . `
             -G "Visual Studio 17 2022" -A x64 `
             -DENABLE_UI=OFF `
@@ -38,7 +43,7 @@ jobs:
             -DENABLE_SCRIPTING=OFF `
             -DENABLE_WEBSOCKET=OFF `
             -DENABLE_WARNINGS_AS_ERRORS=OFF `
-            -D-OBS_VERSION_OVERRIDE="33.0.0"
+            -DOBS_VERSION_OVERRIDE="33.0.0"
 
       - name: Compilar unicamente a DLL de Replay Source
         shell: pwsh
