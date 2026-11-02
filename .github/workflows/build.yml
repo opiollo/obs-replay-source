@@ -11,14 +11,14 @@ jobs:
     runs-on: windows-2022
 
     steps:
-      - name: Descargar código base de OBS Studio (OBS 33)
+      - name: Descargar código base de OBS Studio (Versión 32.2.2)
         uses: actions/checkout@v4
         with:
           repository: obsproject/obs-studio
-          ref: master
+          ref: 32.2.2
           submodules: recursive
 
-      - name: Descargar código do teu plugin (Replay Source)
+      - name: Descargar o teu fork (Replay Source)
         uses: actions/checkout@v4
         with:
           path: plugins/replay-source
@@ -28,29 +28,23 @@ jobs:
         run: |
           Add-Content -Path "plugins/CMakeLists.txt" -Value "`nadd_compile_options(/wd4996)`nadd_subdirectory(replay-source)"
 
-      - name: Configurar CMake e Forzar Versión
+      - name: Configurar CMake
         shell: pwsh
         run: |
-          # Crear unha etiqueta falsa de Git para que o script de OBS non dea erro de formato
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git tag 33.0.0
-          
           cmake -B build -S . `
             -G "Visual Studio 17 2022" -A x64 `
             -DENABLE_UI=OFF `
             -DBUILD_BROWSER=OFF `
             -DENABLE_SCRIPTING=OFF `
             -DENABLE_WEBSOCKET=OFF `
-            -DENABLE_WARNINGS_AS_ERRORS=OFF `
-            -DOBS_VERSION_OVERRIDE="33.0.0"
+            -DENABLE_WARNINGS_AS_ERRORS=OFF
 
-      - name: Compilar unicamente a DLL de Replay Source
+      - name: Compilar a DLL de Replay Source
         shell: pwsh
         run: |
           cmake --build build --config Release --target replay-source
 
-      - name: Empaquetar o plugin completo
+      - name: Empaquetar o plugin completo (DLL + data)
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "package/obs-plugins/64bit"
