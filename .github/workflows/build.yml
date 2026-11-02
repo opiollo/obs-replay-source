@@ -1,4 +1,4 @@
-name: Compilar Replay Source Windows Completo
+name: Compilar Replay Source para OBS 33.0.1
 
 on:
   workflow_dispatch:
@@ -7,18 +7,18 @@ on:
 
 jobs:
   build-windows:
-    name: Windows x64
+    name: Windows x64 (OBS 33)
     runs-on: windows-2022
 
     steps:
-      - name: Descargar código base de OBS Studio (Versión 32.2.2)
+      - name: Descargar código base de OBS Studio (Versión 33.0.0)
         uses: actions/checkout@v4
         with:
           repository: obsproject/obs-studio
-          ref: 32.2.2
+          ref: 33.0.0
           submodules: recursive
 
-      - name: Descargar o teu fork (Replay Source)
+      - name: Descargar o teu fork do plugin (Replay Source)
         uses: actions/checkout@v4
         with:
           path: plugins/replay-source
@@ -28,16 +28,21 @@ jobs:
         run: |
           Add-Content -Path "plugins/CMakeLists.txt" -Value "`nadd_compile_options(/wd4996)`nadd_subdirectory(replay-source)"
 
-      - name: Configurar CMake
+      - name: Configurar CMake e Forzar Versión
         shell: pwsh
         run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git tag 33.0.1
+          
           cmake -B build -S . `
             -G "Visual Studio 17 2022" -A x64 `
             -DENABLE_UI=OFF `
             -DBUILD_BROWSER=OFF `
             -DENABLE_SCRIPTING=OFF `
             -DENABLE_WEBSOCKET=OFF `
-            -DENABLE_WARNINGS_AS_ERRORS=OFF
+            -DENABLE_WARNINGS_AS_ERRORS=OFF `
+            -DOBS_VERSION_OVERRIDE="33.0.1"
 
       - name: Compilar a DLL de Replay Source
         shell: pwsh
@@ -60,5 +65,5 @@ jobs:
       - name: Subir artefacto final (Paquete completo)
         uses: actions/upload-artifact@v4
         with:
-          name: replay-source-windows-paquete-completo
+          name: replay-source-obs33-paquete-completo
           path: package/
