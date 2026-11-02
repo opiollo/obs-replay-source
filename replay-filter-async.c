@@ -3,21 +3,7 @@
 #include <util/threading.h>
 #include <media-io/video-io.h>
 #include <media-io/video-frame.h>
-#include <media-io/audio-resampler.h>
-#include <math.h>
 #include "replay.h"
-
-#ifndef SETTING_THRESHOLD
-#define SETTING_THRESHOLD "threshold"
-#endif
-
-#ifndef SETTING_THRESHOLD_MIN
-#define SETTING_THRESHOLD_MIN -60.0
-#endif
-
-#ifndef SETTING_INTERNAL_FRAMES
-#define SETTING_INTERNAL_FRAMES "internal_frames"
-#endif
 
 static const char *replay_filter_get_name(void *unused)
 {
@@ -36,10 +22,6 @@ static void replay_filter_update(void *data, obs_data_t *settings)
 	}
 	filter->duration = new_duration;
 	filter->internal_frames = false;
-	
-	double threshold_db = obs_data_get_double(settings, SETTING_THRESHOLD);
-	filter->threshold = powf(10.0f, (float)threshold_db / 20.0f);
-	
 	replay_filter_check(filter);
 	obs_source_t *s = obs_get_source_by_name(obs_source_get_name(filter->src));
 	if (s) {
@@ -146,10 +128,6 @@ static obs_properties_t *replay_filter_properties(void *unused)
 						      SETTING_DURATION_MIN, SETTING_DURATION_MAX, 1000);
 	obs_property_int_set_suffix(prop, "ms");
 	obs_properties_add_bool(props, SETTING_INTERNAL_FRAMES, obs_module_text("CaptureInternalFrames"));
-	obs_properties_add_bool(props, SETTING_SOUND_TRIGGER, obs_module_text("SoundTrigger"));
-	prop = obs_properties_add_float_slider(props, SETTING_THRESHOLD, obs_module_text("ThresholdDb"),
-					       SETTING_THRESHOLD_MIN, 0.0, 0.1);
-	obs_property_float_set_suffix(prop, "db");
 	return props;
 }
 
