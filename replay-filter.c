@@ -74,9 +74,6 @@ void replay_filter_offscreen_render(void *data, uint32_t cx, uint32_t cy)
 
 	obs_source_t *target = obs_filter_get_target(filter->src);
 	if (!target) {
-		target = obs_filter_get_parent(filter->src);
-	}
-	if (!target) {
 		return;
 	}
 
